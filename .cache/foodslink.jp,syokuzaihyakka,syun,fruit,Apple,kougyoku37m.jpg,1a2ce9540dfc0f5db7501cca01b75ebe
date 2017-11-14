@@ -1,0 +1,17 @@
+status: 301
+-x-permanent-redirect-url: https://img01.plus-server.net/www.foodslink.jp/syokuzaihyakka/syun/fruit/Apple/kougyoku37m.jpg
+date: Tue, 14 Nov 2017 18:18:18 GMT
+content-location: http://foodslink.jp/syokuzaihyakka/syun/fruit/Apple/kougyoku37m.jpg
+content-length: 302
+server: Apache
+location: https://img01.plus-server.net/www.foodslink.jp/syokuzaihyakka/syun/fruit/Apple/kougyoku37m.jpg
+content-type: text/html; charset=iso-8859-1
+connection: close
+
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">
+<html><head>
+<title>301 Moved Permanently</title>
+</head><body>
+<h1>Moved Permanently</h1>
+<p>The document has moved <a href="https://img01.plus-server.net/www.foodslink.jp/syokuzaihyakka/syun/fruit/Apple/kougyoku37m.jpg">here</a>.</p>
+</body></html>
