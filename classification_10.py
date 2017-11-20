@@ -1,12 +1,39 @@
 from keras.models import Sequential
 from keras.layers import Activation, Dense, Dropout
 from keras.utils.np_utils import to_categorical
+from keras.layers import Dense, LSTM
+from keras.layers.embeddings import Embedding
+from keras.preprocessing import sequence
+from keras.callbacks import History
+from keras.models import model_from_json
+from keras.utils import plot_model
+from IPython.display import SVG
 from keras.optimizers import Adagrad
 from keras.optimizers import Adam
+import pickle
+import matplotlib.pyplot as plt
+import os
+try:
+    # pydot-ng is a fork of pydot that is better maintained
+    import pydot_ng as pydot
+except ImportError:
+    # fall back on pydot if necessary
+    import pydot
 import numpy as np
 from PIL import Image
 import os
 import csv
+from numpy.random import *
+
+image_size = 25
+history = History()
+
+# with open('lenet.json', 'r') as file:
+#     model_json = file.read()
+
+# if os.path.getsize(history) > 0 :
+# with open(history, 'rb') as f:
+#     history = pickle.load(f)
 
 f = open('images/metadata/train_metadata.csv', 'rt')
 train_dataReader = csv.reader(f)
@@ -54,12 +81,12 @@ for dir in os.listdir("images/tr"):
             filepath = dir1 + "/" + file
             # 画像を25x25pixelに変換し、1要素が[R,G,B]3要素を含む配列の25x25の２次元配列として読み込む。
             # [R,G,B]はそれぞれが0-255の配列。
-            image = np.random((25,25,3))
+            image = randint(255, size =(image_size,image_size,3))
             image_ = np.array(Image.open(filepath))
-            image_ = np.array(Image.open(filepath).resize((25, 25)))
+            image_ = np.array(Image.open(filepath).resize((image_size, image_size)))
             if image_.shape[2]==4:
-                for j in range(25):
-                    for k in range(25):
+                for j in range(image_size):
+                    for k in range(image_size):
                         image[j][k] = image_[j][k][0:3]
                 # print(image.shape)
             # 配列を変換し、[[Redの配列],[Greenの配列],[Blueの配列]] のような形にする。
@@ -97,11 +124,21 @@ model.add(Dense(1))
 # オプティマイザにAdamを使用
 opt = Adam(lr=0.001)
 # モデルをコンパイル
-model.compile(loss="mean_squared_error", optimizer=opt, metrics=["accuracy"])
+model.compile(loss="mse", optimizer='rmsprop')# metrics=["accuracy"])
+plot_model(model, to_file="model10.png")
+
+#visualize the filters
+lays = model.layers
+for i, l in enumerate(lays):
+    print(i+1, l)
+w1 = model.layers[0].get_weights()[0]
+b1 = model.layers[0].get_weights()[1]
+print(w1.shape, b1.shape)
+print(model.layers[6].get_weights()[0].shape)
+
 # 学習を実行。10%はテストに使用。
 print(image_list.shape)
-model.fit(image_list, Y, epochs=500, batch_size=50, validation_split=0.1)
-
+model.fit(image_list, Y, epochs=100, batch_size=30, validation_split=0.1, callbacks=[history])
 # テスト用ディレクトリ(./data/train/)の画像でチェック。正解率を表示する。
 total = 0.
 ok_count = 0.
@@ -151,12 +188,12 @@ for dir in os.listdir("images/te"):
                     break
             label_list.append(label)
             filepath = dir1 + "/" + file
-            image = np.random((25,25,3))
+            image = randint(255, size =(image_size,image_size,3))
             image_ = np.array(Image.open(filepath))
-            image_ = np.array(Image.open(filepath).resize((25, 25)))
+            image_ = np.array(Image.open(filepath).resize((image_size, image_size)))
             if image_.shape[2]==4:
-                for j in range(25):
-                    for k in range(25):
+                for j in range(image_size):
+                    for k in range(image_size):
                         image[j][k] = image_[j][k][0:3]
             # 配列を変換し、[[Redの配列],[Greenの配列],[Blueの配列]] のような形にする。
             image = image.transpose(2, 0, 1)
@@ -168,10 +205,19 @@ for dir in os.listdir("images/te"):
 
             # if label == result[0]:
             #     ok_count += 1.
-            error.append(float(label)-float(result[0][0]))
+            error.append(abs(float(label)-float(result[0][0])))
 
 error_sum = 0
 for i in error:
     error_sum += i
 
 print("Average loss: ", abs(error_sum / total))
+
+plt.plot(history.history['loss'])
+plt.plot(history.history['val_loss'])
+plt.title('model loss')
+plt.xlabel('epoch')
+plt.ylabel("loss")
+plt.legend(['loss', 'val_loss'], loc='center right')
+plt.show()
+plt.savefig('10sec_history.png')
