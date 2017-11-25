@@ -156,7 +156,7 @@ print(model.layers[6].get_weights()[0].shape)
 
 # 学習を実行。10%はテストに使用。
 print(image_list.shape)
-model.fit(X_train, y_train, epochs=4, batch_size=32, callbacks=[history])
+model.fit(X_train, y_train, epochs=1, batch_size=32, callbacks=[history])
 # テスト用ディレクトリ(./data/train/)の画像でチェック。正解率を表示する。
 total = 0.
 ok_count = 0.
@@ -194,7 +194,7 @@ layer_dict = dict([(layer.name, layer) for layer in model.layers])
 # 損失関数を作成
 for j in range(32):
     layer_output = layer_dict[layer_name].output
-    loss = K.mean(layer_output[:, filter_index[j], :, :])
+    loss = K.mean(layer_output[:, :, :, filter_index[j]])
 
     # 勾配を計算。戻り値はリスト
     grads = K.gradients(loss, input_img)[0]
@@ -207,8 +207,10 @@ for j in range(32):
 
     # ランダムに初期化
     input_img_data = np.random.random((1, image_size, image_size, 3)) * 20 + 128
+    import scipy as sp
+    # sp.misc.imsave('filter/%s_random_%d.png' % (layer_name, filter_index[j]), input_img_data)
     # gradient ascent
-    step=1000
+    step=0.001
     for i in range(20):
         loss_value, grads_value = iterate([input_img_data, 0])
         input_img_data += grads_value * step
@@ -231,7 +233,6 @@ for j in range(32):
     img = input_img_data[0]
     img = deprocess_image(img)
 
-    import scipy as sp
     sp.misc.imsave('filter/%s_filter_%d.png' % (layer_name, filter_index[j]), img)
 
 
