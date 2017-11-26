@@ -1,3 +1,4 @@
+#-*- coding:utf-8 -*-
 import keras
 from keras.models import Sequential
 from keras.layers import Activation, Dense, Dropout, Flatten
@@ -156,7 +157,7 @@ print(model.layers[6].get_weights()[0].shape)
 
 # 学習を実行。10%はテストに使用。
 print(image_list.shape)
-model.fit(X_train, y_train, epochs=1, batch_size=32, callbacks=[history])
+model.fit(X_train, y_train, epochs=10, batch_size=32, callbacks=[history])
 # テスト用ディレクトリ(./data/train/)の画像でチェック。正解率を表示する。
 total = 0.
 ok_count = 0.
@@ -188,11 +189,11 @@ plt.savefig('10sec_history.png')
 #活性化が最大となる画像
 layer_name = 'conv2d_1' # 可視化したい層
 filter_index = [] # 可視化したいフィルタ
-for i in range(32):
+for i in range(1):
     filter_index.append(i)
 layer_dict = dict([(layer.name, layer) for layer in model.layers])
 # 損失関数を作成
-for j in range(32):
+for j in range(1):
     layer_output = layer_dict[layer_name].output
     loss = K.mean(layer_output[:, :, :, filter_index[j]])
 
@@ -200,20 +201,26 @@ for j in range(32):
     grads = K.gradients(loss, input_img)[0]
 
     # 勾配を規格化
-    grads /= (K.sqrt(K.mean(K.square(grads))) + 1e-5)
+    grads /= (K.sqrt(K.mean(K.square(grads))) + K.epsilon())
 
     # input_imgを与えるとlossとgradsを返す関数を作成
     iterate = K.function([input_img, K.learning_phase()], [loss, grads])
 
     # ランダムに初期化
-    input_img_data = np.random.random((1, image_size, image_size, 3)) * 20 + 128
+    input_img_data = np.random.random((1, image_size, image_size, 3))
+    input_img_data = (input_img_data - 0.5) * 20 + 128
     import scipy as sp
     # sp.misc.imsave('filter/%s_random_%d.png' % (layer_name, filter_index[j]), input_img_data)
     # gradient ascent
-    step=0.001
-    for i in range(20):
+    step=10
+    for i in range(100):
+        # print(input_img_data.shape)
+        print(input_img_data[0][40][40])
         loss_value, grads_value = iterate([input_img_data, 0])
+        print(grads_value[0][40][40])
         input_img_data += grads_value * step
+        if abs(grads_value[0][40][40][0]) < 1e-6:
+            break
 
     def deprocess_image(x):
         # 平均0, 標準偏差が0.1になるように規格化
