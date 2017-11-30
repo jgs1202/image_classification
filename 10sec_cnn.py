@@ -100,7 +100,7 @@ for file in os.listdir("images/all"):
 # print(len(image_list[0]))
 image_list = np.array(image_list)
 image_list = image_list.astype("float32")
-print(image_list[0])
+# print(image_list[0])
 image_list = image_list / 255 # for n in image_list:
     # print(n.shape)
 #
@@ -111,11 +111,15 @@ Y = np.array(label_list)
 Y = Y.astype("float32")
 #divide train and test data
 X_train, X_test, y_train, y_test, z_train, z_test = train_test_split(image_list, Y, name_list, test_size=0.1, random_state=111)
-print(X_train[0])
-print(y_train[0])
-print(X_train[1])
-print(y_train[1])
+# print(X_train[0])
+# print(y_train[0])
+# print(X_train[1])
+# print(y_train[1])
 
+#define correlationa as metrics
+def cor_pred(y_true, y_pred):
+    corr = np.corrcoef(np.asarray(y_true), np.asarray(y_pred))
+    return corr
 
 # モデルを生成してニューラルネットを構築
 model = Sequential()
@@ -157,16 +161,16 @@ print(model.layers[6].get_weights()[0].shape)
 
 # 学習を実行。10%はテストに使用。
 print(image_list.shape)
-model.fit(X_train, y_train, epochs=15, batch_size=32, callbacks=[history])
+model.fit(X_train, y_train, epochs=8, batch_size=32, callbacks=[history])
 # テスト用ディレクトリ(./data/train/)の画像でチェック。正解率を表示する。
 total = 0.
 ok_count = 0.
-
+results=[]
 i=0
 for i in range(len(X_test)):
     result = model.predict(np.array([X_test[i]]))
     print("name:", z_test[i], "label:", y_test[i], "result:", result[0][0])
-
+    results.append(result[0][0])
     total += 1.
 
     # if label == result[0]:
@@ -178,6 +182,8 @@ for i in error:
     error_sum += i
 
 print("Average loss: ", abs(error_sum / total))
+print('Correlation: ', np.corrcoef(np.asarray(y_test), np.asarray(results)))
+
 
 plt.plot(history.history['loss'])
 plt.title('model loss')
@@ -213,11 +219,11 @@ for j in range(32):
     # sp.misc.imsave('filter/%s_random_%d.png' % (layer_name, filter_index[j]), input_img_data)
     # gradient ascent
     step=0.2
-    for i in range(1000):
+    for i in range(200):
         # print(input_img_data.shape)
-        print(input_img_data[0][40][40])
+        # print(input_img_data[0][40][40])
         loss_value, grads_value = iterate([input_img_data, 0])
-        print(grads_value[0][40][40])
+        # print(grads_value[0][40][40])
         input_img_data += grads_value * step
         if abs(grads_value[0][40][40][0]) < 1e-6:
             break

@@ -30,8 +30,8 @@ import csv
 from numpy.random import *
 from keras import backend as K
 
-image_size = 128
-kernel = 8
+image_size = 96
+kernel = 5
 dilation = 2
 history = History()
 
@@ -61,8 +61,11 @@ error=[]
 
 # 学習用のデータを作る.
 image_list = []
+ourimage_list =[]
+ourlabel_list = []
 label_list = []
 name_list = []
+ourname_list = []
 
 # ./data/train 以下のorange,appleディレクトリ以下の画像を読み込む。
 for file in os.listdir("images/all"):
@@ -108,8 +111,6 @@ for file in os.listdir("images/correct"):
                 break
         # 配列label_listに正解ラベルを追加(りんご:0 オレンジ:1)
         if label != 0:
-            label_list.append(float(label))
-            name_list.append(file)
             filepath = "images/correct" + "/" + file
             # 画像を25x25pixelに変換し、1要素が[R,G,B]3要素を含む配列の25x25の２次元配列として読み込む。
             # [R,G,B]はそれぞれが0-255の配列。
@@ -121,7 +122,7 @@ for file in os.listdir("images/correct"):
                 print('not RGB')
             image_ = np.array(image_)
             # print(image_.shape)
-            image_ = np.array(Image.open(filepath).resize((image_size, image_size), Image.BICUBIC))
+            image_ = np.array(Image.open(filepath).resize((image_size, image_size)))
             # print(file)
             # print(image_)
             # print(image_.shape)
@@ -140,7 +141,14 @@ for file in os.listdir("images/correct"):
             # image = image.reshape(1, image.shape[0] * image.shape[1] * image.shape[2]).astype("float32")[0]
             # print(image.shape)
             # 出来上がった配列をimage_listに追加。
-            image_list.append(image)
+            # if i % 50 ==0:
+            #     image_list.append(image)
+            #     label_list.append(float(label))
+            #     name_list.append(file)
+            ourimage_list.append(image)
+            ourlabel_list.append(float(label))
+            ourname_list.append(file)
+            # i += 1
 
 
 # # kerasに渡すためにnumpy配列に変換。
@@ -149,6 +157,10 @@ image_list = np.array(image_list)
 image_list = image_list.astype("float32")
 print(image_list[0])
 image_list = image_list / 255 # for n in image_list:
+ourimage_list = np.array(ourimage_list)
+ourimage_list = ourimage_list.astype("float32")
+print(ourimage_list[0])
+ourimage_list = ourimage_list / 255 # for n in image_list:
     # print(n.shape)
 #
 # ラベルの配列を1と0からなるラベル配列に変更
@@ -184,14 +196,17 @@ model.add(MaxPooling2D(pool_size=(2, 2)))
 model.add(Dropout(0.25))
 
 model.add(Flatten())
-model.add(Dense(256))
+model.add(Dense(512))
+# model.add(Dense(20))
+model.add(Activation('relu'))
+model.add(Dense(64))
 model.add(Activation('relu'))
 model.add(Dropout(0.5))
 model.add(Dense(1))       # クラスは2個
 # model.add(Activation('softmax'))
 # モデルをコンパイル
 model.compile(loss="mse", optimizer='adam')# metrics=["accuracy"])
-plot_model(model, to_file="model10.png")
+plot_model(model, to_file="model1.png")
 
 #visualize the filters
 lays = model.layers
@@ -199,21 +214,23 @@ for i, l in enumerate(lays):
     print(i+1, l)
 w1 = model.layers[0].get_weights()[0]
 b1 = model.layers[0].get_weights()[1]
-print(w1.shape, b1.shape)
-print(model.layers[6].get_weights()[0].shape)
+# print(w1.shape, b1.shape)
+# print(model.layers[6].get_weights()[0].shape)
 
 # 学習を実行。10%はテストに使用。
 print(image_list.shape)
-model.fit(X_train, y_train, epochs=1, batch_size=32, callbacks=[history])
+model.fit(X_train, y_train, epochs=20, batch_size=50, callbacks=[history])
 # テスト用ディレクトリ(./data/train/)の画像でチェック。正解率を表示する。
 total = 0.
 ok_count = 0.
-
+results = []
+csvfile = []
 i=0
 for i in range(len(X_test)):
     result = model.predict(np.array([X_test[i]]))
     print("name:", z_test[i], "label:", y_test[i], "result:", result[0][0])
-
+    results.append(result[0][0])
+    csvfile.append([z_test[i], y_test[i], result[0][0], float(y_test[i])-float(result[0][0]), abs(float(y_test[i])-float(result[0][0])) ] )
     total += 1.
 
     # if label == result[0]:
@@ -225,6 +242,25 @@ for i in error:
     error_sum += i
 
 print("Average loss: ", abs(error_sum / total))
+print('Correlation: ', np.corrcoef(np.asarray(y_test), np.asarray(results)))
+
+#make list that show the difference between our experiment's memorability and prediction
+
+for i in range(len(ourimage_list)):
+    result = model.predict(np.array([ourimage_list[i]]))
+    print("name:", ourname_list[i], "label:", ourlabel_list[i], "result:", result[0][0])
+    results.append(result[0][0])
+    csvfile.append([ourname_list[i], ourlabel_list[i], result[0][0], float(ourlabel_list[i])-float(result[0][0]), abs(float(ourlabel_list[i])-float(result[0][0])) ])
+
+
+from operator import itemgetter
+csvfile.sort(key=itemgetter(4), reverse=True)
+f=open('Prediction.csv', 'w')
+writer = csv.writer(f)
+for j in csvfile:
+    writer.writerow(j)
+f.close()
+
 
 plt.plot(history.history['loss'])
 plt.title('model loss')
@@ -234,13 +270,14 @@ plt.legend('loss', loc='center right')
 plt.savefig('1sec_history.png')
 
 #活性化が最大となる画像
-layer_name = 'conv2d_3' # 可視化したい層
+layer_name = 'conv2d_2' # 可視化したい層
 filter_index = [] # 可視化したいフィルタ
-for i in range(32):
+for i in range(20):
     filter_index.append(i)
 layer_dict = dict([(layer.name, layer) for layer in model.layers])
 # 損失関数を作成
-for j in range(32):
+for j in range(20):
+    print(j)
     layer_output = layer_dict[layer_name].output
     loss = K.mean(layer_output[:, :, :, filter_index[j]])
 
@@ -259,8 +296,8 @@ for j in range(32):
     import scipy as sp
     # sp.misc.imsave('filter/%s_random_%d.png' % (layer_name, filter_index[j]), input_img_data)
     # gradient ascent
-    step=0.2
-    for i in range(500):
+    step=0.1
+    for i in range(400):
         # print(input_img_data.shape)
         # print(input_img_data[0][16][16][0])
         loss_value, grads_value = iterate([input_img_data, 0])
